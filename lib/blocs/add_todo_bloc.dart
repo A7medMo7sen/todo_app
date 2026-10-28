@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-// Events
 sealed class AddTodoEvent {}
 
 class AddTodoSubmitted extends AddTodoEvent {
@@ -10,7 +9,11 @@ class AddTodoSubmitted extends AddTodoEvent {
   final String title, description;
 }
 
-// States
+class UpdateTodoSubmitted extends AddTodoEvent {
+  UpdateTodoSubmitted(this.id, this.title, this.description);
+  final String id, title, description;
+}
+
 sealed class AddTodoState {}
 
 class AddTodoInitial extends AddTodoState {}
@@ -24,7 +27,6 @@ class AddTodoFailure extends AddTodoState {
   final String message;
 }
 
-// Bloc
 class AddTodoBloc extends Bloc<AddTodoEvent, AddTodoState> {
   AddTodoBloc() : super(AddTodoInitial()) {
     on<AddTodoSubmitted>((event, emit) async {
@@ -41,6 +43,22 @@ class AddTodoBloc extends Bloc<AddTodoEvent, AddTodoState> {
         emit(AddTodoSuccess());
       } catch (e) {
         emit(AddTodoFailure('Could not save to-do. Try again.'));
+      }
+    });
+
+    on<UpdateTodoSubmitted>((event, emit) async {
+      emit(AddTodoLoading());
+      try {
+        await FirebaseFirestore.instance
+            .collection('todos')
+            .doc(event.id)
+            .update({
+          'title': event.title,
+          'description': event.description,
+        });
+        emit(AddTodoSuccess());
+      } catch (e) {
+        emit(AddTodoFailure('Could not update to-do. Try again.'));
       }
     });
   }

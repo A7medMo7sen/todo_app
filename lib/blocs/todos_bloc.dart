@@ -7,6 +7,11 @@ sealed class TodosEvent {}
 
 class TodosFetched extends TodosEvent {}
 
+class TodoDeleted extends TodosEvent {
+  TodoDeleted(this.id);
+  final String id;
+}
+
 sealed class TodosState {}
 
 class TodosInitial extends TodosState {}
@@ -14,8 +19,9 @@ class TodosInitial extends TodosState {}
 class TodosLoading extends TodosState {}
 
 class TodosSuccess extends TodosState {
-  TodosSuccess(this.todos);
+  TodosSuccess(this.todos, {this.error});
   final List<Todo> todos;
+  final String? error;
 }
 
 class TodosFailure extends TodosState {
@@ -49,6 +55,24 @@ class TodosBloc extends Bloc<TodosEvent, TodosState> {
         emit(TodosSuccess(todos));
       } catch (e) {
         emit(TodosFailure('Could not load your to-dos.'));
+      }
+    });
+
+    on<TodoDeleted>((event, emit) async {
+      final currentState = state;
+      if (currentState is TodosSuccess) {
+        try {
+          await FirebaseFirestore.instance
+              .collection('todos')
+              .doc(event.id)
+              .delete();
+          final updatedTodos =
+              currentState.todos.where((t) => t.id != event.id).toList();
+          emit(TodosSuccess(updatedTodos));
+        } catch (e) {
+          emit(TodosSuccess(currentState.todos,
+              error: 'Could not delete to-do.'));
+        }
       }
     });
   }
